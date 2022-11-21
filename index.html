@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>Mapping the Stalker State</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.js"></script>
+    <script src="https://unpkg.com/intersection-observer@0.12.0/intersection-observer.js"></script>
+    <script src="https://unpkg.com/scrollama"></script>
+    <script src='js/jquery-3.3.1.min.js'></script>
+    <style>
+        body {
+            margin:0;
+            padding:0;
+            width: 100vw;
+            overflow-x: hidden;
+            font-family: sans-serif;
+        }
+        a, a:hover, a:visited {
+            color: #0071bc;
+        }
+        #close {
+          text-align: center;
+          width: 40px;
+          height: 40px;
+          font-size: 30px;
+          color: #ffffff;
+          z-index: 999;
+          position: fixed;
+          top: -50px;
+          right: 10px;
+          cursor: pointer;
+          -webkit-transition: all 0.5s ease-out;
+           -moz-transition: all 0.5s ease-out;
+             -o-transition: all 0.5s ease-out;
+                transition: all 0.5s ease-out;
+        }
+        #close:hover {
+          background-color: #fff;
+          color: #000;
+        }
+        #instruction {
+          color: #ffffff;
+          z-index: 999;
+          position: fixed;
+          top: -50px;
+          right: 60px;
+          width: 200px;
+          text-align: right;
+          font-size: 11px;
+          letter-spacing: 1px;
+          -webkit-transition: all 0.5s ease-out;
+           -moz-transition: all 0.5s ease-out;
+             -o-transition: all 0.5s ease-out;
+                transition: all 0.5s ease-out;
+        }
+        #map {
+          cursor: default !important;
+            top:0;
+            height: 100vh;
+            width:100vw;
+            position: fixed;
+        }
+        #mapInset {
+            border-radius: 6px;
+            bottom:50px;
+            right:30px;
+            height: 180px;
+            width:250px;
+            max-width:100%;
+            position: fixed;
+
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            pointer-events: none;
+        }
+        #mapInset .mapboxgl-ctrl-bottom-left{
+            display: none;
+        }
+        @media (max-width: 500px) {
+            #mapInset {
+                display: none;
+            }
+        }
+        #header {
+
+            opacity: 0.8;
+            color: #ffffff;
+            margin: auto;
+            width: 100vw;
+            padding-top: 5vw;
+            position: relative;
+            z-index: 5;
+            background: none;
+            text-align: center;
+            margin: 30vh 0 30vh 0;
+        }
+        #header h1, #header h2, #header p {
+            margin: 0;
+            padding: 2vh 2vw;
+            text-align: center;
+        }
+        #story {
+          visibility: visible;
+        }
+        #center {
+          position: fixed;
+          z-index: 999;
+          border: 1px solid #ffd600;
+          width: 50px;
+          height: 50px;
+          top: 42vh;
+          left: 46vw;
+          opacity: 0;
+          -webkit-transition: all 0.5s ease-out;
+           -moz-transition: all 0.5s ease-out;
+             -o-transition: all 0.5s ease-out;
+                transition: all 0.5s ease-out;
+        }
+        .logo {
+          width: 50px;
+          margin-right: 10px;
+          display: inline-block;
+        }
+        .stamp {
+          display: inline-block;
+        }
+        .stamp>b {
+          font-size: 32px;
+        }
+        #banner {
+          top: -50px;
+          z-index: 999;
+          left: 15px;
+          position: fixed;
+          cursor: pointer;
+          opacity: 0.8;
+          -webkit-transition: all 0.5s ease-out;
+           -moz-transition: all 0.5s ease-out;
+             -o-transition: all 0.5s ease-out;
+                transition: all 0.5s ease-out;
+        }
+        #footer {
+            width: 100%;
+            min-height: 5vh;
+            padding-top: 2vh;
+            padding-bottom: 2vh;
+            text-align: center;
+            line-height: 25px;
+            font-size: 13px;
+            position: relative;
+            z-index: 5;
+        }
+        #features {
+            padding-top: 10vh;
+            padding-bottom: 10vh;
+        }
+        .hidden {
+            visibility: hidden;
+        }
+        .centered {
+            width: 50vw;
+            margin: 0 auto;
+        }
+        .lefty {
+            width: 33vw;
+            margin-left: 5vw;
+        }
+        .righty {
+            width: 33vw;
+            margin-left: 62vw;
+        }
+        .fully {
+            width: 100%;
+            margin: auto;
+        }
+        .light {
+            color: #444;
+            background-color: #ffffff;
+        }
+        .dark, #legend {
+          color: #000000;
+          border-radius: 2px;
+          background-color: rgba(255,255,255,0.8);
+        }
+        #legend {
+          z-index: 999;
+          position: fixed;
+          left: 25px;
+          bottom: 25px;
+          font-size: 11px;
+          padding: 5px;
+        }
+        .key {
+          padding: 5px;
+          width: 100%;
+          border-bottom: 1px solid #eeeeee;
+        }
+        .step {
+            border-radius: 5px;
+            padding-bottom: 50vh;
+            /* margin-bottom: 10vh; */
+            opacity: 0.25;
+        }
+        .step.active {
+            opacity: 0.9;
+        }
+
+        .step div {
+            padding:  25px 50px;
+            line-height: 20px;
+            font-size: 13px;
+        }
+
+        .step img {
+            width: 200px;
+            margin-bottom: 10px;
+            opacity: 0.8;
+        }
+
+        .bigImage {
+          opacity: 1 !important;
+          width: 400px !important;
+          right: 50px !important;
+          right: 50px !important;
+          position: absolute !important;
+          border: 1px solid #ffd600;
+        }
+
+        @media (max-width: 750px) {
+            .centered, .lefty, .righty, .fully {
+                width: 90vw;
+                margin: 0 auto;
+            }
+        }
+
+        /* Fix issue on mobile browser where scroll breaks  */
+        .mapboxgl-canvas-container.mapboxgl-touch-zoom-rotate.mapboxgl-touch-drag-pan,
+        .mapboxgl-canvas-container.mapboxgl-touch-zoom-rotate.mapboxgl-touch-drag-pan .mapboxgl-canvas {
+            touch-action: unset;
+        }
+
+        </style>
+</head>
+<body>
+<script src="https://unpkg.com/three@0.126.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.126.0/examples/js/loaders/MTLLoader.js"></script>
+<script src="https://unpkg.com/three@0.126.0/examples/js/loaders/OBJLoader.js"></script>
+<script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
+<!-- <script src="MTLLoader.js"></script>
+<script src="OBJLoader.js"></script> -->
+<div id='header' class='dark'>
+  <img class='logo' src='img/stoplapdlogo.png'>
+  <div class='stamp'><b>Mapping the <span style="color: #ff0000">Stalker State</span></b><br style="margin-bottom: 8px">↪ a report from the Stop LAPD Spying Coalition</div>
+</div>
+<div id='banner'>
+  <img class='logo' src='img/stoplapdlogo.png'>
+</div>
+<div id='center'></div>
+<div id='close'>×</div>
+<div id='instruction'>click to navigate freely →</div>
+<div id='map'></div>
+<div id='mapInset'></div>
+<div id='story'></div>
+
+
+</div>
+<script src="config.js"></script>
+<script>
+
+var initLoad = true;
+var layerTypes = {
+    'fill': ['fill-opacity'],
+    'line': ['line-opacity'],
+    'circle': ['circle-opacity', 'circle-stroke-opacity'],
+    'symbol': ['icon-opacity', 'text-opacity'],
+    'raster': ['raster-opacity'],
+    'fill-extrusion': ['fill-extrusion-opacity'],
+    'heatmap': ['heatmap-opacity']
+};
+var interactions = [
+  'scrollZoom',
+  'boxZoom',
+  'dragRotate',
+  'dragPan',
+  'keyboard',
+  'doubleClickZoom',
+  'touchZoomRotate'
+];
+var layers = [
+  {
+      layer: 'oih',
+      name: "Police Killings",
+      subtitle: "2000—2021"
+  },
+  {
+      layer: 'waterway-label',
+      name: "",
+  },
+  {
+      layer: 'hotspots2015',
+      name: "Hotspots",
+      subtitle: "Central Division, 2015 and 2018"
+  },
+  {
+      layer: 'skidrow',
+      name: "<span style='color: #ff0000'>◻</span> Skid Row Boundary",
+  },
+  {
+      layer: 'anchorpoints',
+      name: "Anchor Points",
+  },
+  {
+      layer: 'cspsites',
+      name: "<span style='color: #ffb000'>◼</span> CSP Sites",
+  },
+  {
+      layer: 'laserzones',
+      name: "<span style='color: #ff0000'>◼</span> Laser Zones",
+  }
+];
+
+// layers.forEach((d,i) => {
+//   var key = document.createElement('div');
+//   key.className = 'key';
+//   key.innerText = d.name;
+//   legend.append(key);
+// });
+
+var banner = false;
+
+var alignments = {
+    'left': 'lefty',
+    'center': 'centered',
+    'right': 'righty',
+    'full': 'fully'
+}
+
+function getLayerPaintType(layer) {
+    var layerType = map.getLayer(layer).type;
+    return layerTypes[layerType];
+}
+
+function setLayerOpacity(layer) {
+    var paintProps = getLayerPaintType(layer.layer);
+    // if (layer.layer == "rosslyn") {
+    //   setOpacity(models[0].scene, layer.opacity);
+    // } else if (layer.layer == "avalon") {
+    //   setOpacity(models[1].scene, layer.opacity);
+    // } else {
+      paintProps.forEach(function(prop) {
+          var options = {};
+          if (layer.duration) {
+              var transitionProp = prop + "-transition";
+              options = { "duration": layer.duration };
+              map.setPaintProperty(layer.layer, transitionProp, options);
+          }
+          map.setPaintProperty(layer.layer, prop, layer.opacity, options);
+      });
+    // }
+}
+
+var story = document.getElementById('story');
+var features = document.createElement('div');
+features.setAttribute('id', 'features');
+
+var titleText = document.createElement('h1');
+header.appendChild(titleText);
+
+config.chapters.forEach((record, idx) => {
+    var container = document.createElement('div');
+    var chapter = document.createElement('div');
+
+    if (record.title) {
+        var title = document.createElement('h3');
+        title.innerText = record.title;
+        chapter.appendChild(title);
+    }
+
+    if (record.image) {
+        var image = new Image();
+        image.src = record.image;
+        image.className = 'smallImage';
+        container.appendChild(image);
+    }
+
+    if (record.bigImage) {
+        var image = new Image();
+        image.src = record.bigImage;
+        image.className = 'bigImage';
+        container.appendChild(image);
+    }
+
+    if (record.description) {
+        var story = document.createElement('p');
+        story.innerHTML = record.description;
+        chapter.appendChild(story);
+    }
+
+    container.setAttribute('id', record.id);
+    container.classList.add('step');
+    if (idx === 0) {
+        container.classList.add('active');
+    }
+
+    chapter.classList.add(config.theme);
+    container.appendChild(chapter);
+    container.classList.add(alignments[record.alignment] || 'centered');
+    if (record.hidden) {
+        container.classList.add('hidden');
+    }
+    features.appendChild(container);
+});
+
+story.appendChild(features);
+
+var footer = document.createElement('div');
+
+if (config.footer) {
+    var footerText = document.createElement('p');
+    footerText.innerHTML = config.footer;
+    footer.appendChild(footerText);
+}
+
+if (footer.innerText.length > 0) {
+    footer.classList.add(config.theme);
+    footer.setAttribute('id', 'footer');
+    story.appendChild(footer);
+}
+
+mapboxgl.accessToken = config.accessToken;
+
+const transformRequest = (url) => {
+    const hasQuery = url.indexOf("?") !== -1;
+    const suffix = hasQuery ? "&pluginName=scrollytellingV2" : "?pluginName=scrollytellingV2";
+    return {
+      url: url + suffix
+    }
+}
+
+
+var map = new mapboxgl.Map({
+  container: 'map',
+  zoom: 18,
+  center: [148.9819, -35.3981],
+  pitch: 60,
+  antialias: true,
+  style: config.style,
+  center: config.chapters[0].location.center,
+  zoom: config.chapters[0].location.zoom,
+  bearing: config.chapters[0].location.bearing,
+  pitch: config.chapters[0].location.pitch,
+  interactive: true,
+  transformRequest: transformRequest,
+});
+
+interactions.forEach((d,i) => {
+  map[d].disable();
+});
+
+$('#close').click(function() {
+  if ($("#story").is(':visible')) {
+    map.interactive = true;
+    $('#story').hide();
+    $('#header').hide();
+    $('#legend').show();
+    $('#center').css({ opacity: 0 });
+    $('#instruction').html("click to replay narrative →");
+    $('#close').html("▸");
+    interactions.forEach((d,i) => {
+      map[d].enable();
+    });
+  } else {
+    map.interactive = false;
+    map.flyTo({ center: [-118.366833, 33.978098], zoom: 9, bearing: 0, pitch: 0 });
+    $('#story').show();
+    $('#instruction').html("click to navigate freely →");
+    $('#header').show();
+    $('#center').show();
+    $('#legend').hide();
+    $('#center').css({ opacity: 0 });
+    $('#close').html("×");
+    interactions.forEach((d,i) => {
+      map[d].disable();
+    });
+  }
+});
+
+$('#banner').click(function() {
+  window.location.href = "https://stoplapdspying.org";
+});
+
+if (config.inset) {
+ var insetMap = new mapboxgl.Map({
+    container: 'mapInset',
+    style: 'mapbox://styles/mapbox/light-v10',
+    center: config.chapters[0].location.center,
+    zoom: 3,
+    hash: false,
+    interactive: false,
+    attributionControl: false,
+  });
+}
+
+if (config.showMarkers) {
+    var marker = new mapboxgl.Marker({ color: config.markerColor });
+    marker.setLngLat(config.chapters[0].location.center).addTo(map);
+}
+
+var scroller = scrollama();
+
+map.on("load", function() {
+    if (config.use3dTerrain) {
+        map.addSource('mapbox-dem', {
+            'type': 'raster-dem',
+            'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
+            'tileSize': 512,
+            'maxzoom': 14
+        });
+        map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
+        map.addLayer({
+            'id': 'sky',
+            'type': 'sky',
+            'paint': {
+                'sky-type': 'atmosphere',
+                'sky-atmosphere-sun': [0.0, 0.0],
+                'sky-atmosphere-sun-intensity': 15
+            }
+        });
+        models.forEach((d,i) => {
+          map.addLayer(d, 'waterway-label');
+        });
+    };
+
+    if (config.inset) {
+      map.on('move', getInsetBounds);
+    }
+
+    scroller
+      .setup({
+          step: '.step',
+          offset: 0.5,
+          progress: true
+      })
+      .onStepEnter(async response => {
+        if (!banner) {
+          $('#banner').css({ top: '15px' });
+          $('#instruction').css({ top: '27px' });
+          $('#close').css({ top: '15px' });
+        }
+          var chapter = config.chapters.find(chap => chap.id === response.element.id);
+          response.element.classList.add('active');
+          if (chapter.id == 'lpr') $('#center').css({ opacity: 1 });
+          else $('#center').css({ opacity: 0 });
+          map[chapter.mapAnimation || 'flyTo'](chapter.location);
+          // Incase you do not want to have a dynamic inset map,
+          // rather want to keep it a static view but still change the
+          // bbox as main map move: comment out the below if section.
+          if (config.inset) {
+            if (chapter.location.zoom < 9) {
+              insetMap.flyTo({center: chapter.location.center, zoom: 7});
+            }
+            else {
+              insetMap.flyTo({center: chapter.location.center, zoom: 9});
+            }
+          }
+          if (config.showMarkers) {
+              marker.setLngLat(chapter.location.center);
+          }
+          if (chapter.onChapterEnter.length > 0) {
+              chapter.onChapterEnter.forEach(setLayerOpacity);
+          }
+          if (chapter.callback) {
+              window[chapter.callback]();
+          }
+          if (chapter.rotateAnimation) {
+              map.once('moveend', () => {
+                  const rotateNumber = map.getBearing();
+                  map.rotateTo(rotateNumber + 180, {
+                      duration: 30000, easing: function (t) {
+                          return t;
+                      }
+                  });
+              });
+          }
+      })
+      .onStepExit(response => {
+          var chapter = config.chapters.find(chap => chap.id === response.element.id);
+          response.element.classList.remove('active');
+          if (chapter.onChapterExit.length > 0) {
+              chapter.onChapterExit.forEach(setLayerOpacity);
+          }
+      });
+});
+
+function getInsetBounds() {
+            let bounds = map.getBounds();
+            let boundsJson = {
+                "type": "FeatureCollection",
+                "features": [{
+                    "type": "Feature",
+                    "properties": {},
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [
+                            [
+                                [
+                                    bounds._sw.lng,
+                                    bounds._sw.lat
+                                ],
+                                [
+                                    bounds._ne.lng,
+                                    bounds._sw.lat
+                                ],
+                                [
+                                    bounds._ne.lng,
+                                    bounds._ne.lat
+                                ],
+                                [
+                                    bounds._sw.lng,
+                                    bounds._ne.lat
+                                ],
+                                [
+                                    bounds._sw.lng,
+                                    bounds._sw.lat
+                                ]
+                            ]
+                        ]
+                    }
+                }]
+            }
+
+            if (initLoad) {
+                addInsetLayer(boundsJson);
+                initLoad = false;
+            } else {
+                updateInsetLayer(boundsJson);
+            }
+
+        }
+
+function addInsetLayer(bounds) {
+    insetMap.addSource('boundsSource', {
+        'type': 'geojson',
+        'data': bounds
+    });
+
+    insetMap.addLayer({
+        'id': 'boundsLayer',
+        'type': 'fill',
+        'source': 'boundsSource',
+        'layout': {},
+        'paint': {
+            'fill-color': '#fff',
+            'fill-opacity': 0.2
+        }
+    });
+    insetMap.addLayer({
+        'id': 'outlineLayer',
+        'type': 'line',
+        'source': 'boundsSource',
+        'layout': {},
+        'paint': {
+            'line-color': '#000',
+            'line-width': 1
+        }
+    });
+}
+
+function updateInsetLayer(bounds) {
+    insetMap.getSource('boundsSource').setData(bounds);
+}
+
+window.addEventListener('resize', scroller.resize);
+
+  const THREE = window.THREE;
+
+var models = [];
+
+function addOBJModel(id, obj, mtl, modelOrigin, modelAltitude, modelRotate) {
+
+  var modelAsMercatorCoordinate = mapboxgl.MercatorCoordinate.fromLngLat(
+      modelOrigin,
+      modelAltitude
+  );
+
+  const modelTransform = {
+      translateX: modelAsMercatorCoordinate.x,
+      translateY: modelAsMercatorCoordinate.y,
+      translateZ: modelAsMercatorCoordinate.z,
+      rotateX: modelRotate[0],
+      rotateY: modelRotate[1],
+      rotateZ: modelRotate[2],
+      scale: modelAsMercatorCoordinate.meterInMercatorCoordinateUnits() * 260
+  };
+
+  let customLayer = {
+      id: id,
+      type: 'custom',
+      renderingMode: '3d',
+      onAdd: function (map, gl) {
+          this.camera = new THREE.Camera();
+          this.scene = new THREE.Scene();
+
+          const directionalLight = new THREE.DirectionalLight(0xffffff);
+          directionalLight.position.set(0, -70, 100).normalize();
+          this.scene.add(directionalLight);
+
+          const directionalLight2 = new THREE.DirectionalLight(0xffffff);
+          directionalLight2.position.set(0, 70, 100).normalize();
+          this.scene.add(directionalLight2);
+
+          var mtlLoader = new THREE.MTLLoader();
+          var objLoader = new THREE.OBJLoader();
+
+          mtlLoader.load(mtl, function(materials) {
+
+            materials.preload();
+
+            objLoader.setMaterials( materials );
+
+            objLoader.load(
+              obj,
+              function (o) {
+                materials.materials.material_1.specular = new THREE.Color(0x000000);
+                // materials.materials.material_1.blending = 2;
+                this.scene.add(o);
+              }.bind(this)
+            );
+
+          }.bind(this));
+
+          // const loader = new THREE.GLTFLoader();
+          // loader.load(
+          //     '...gltf',
+          //     (gltf) => {
+          //         this.scene.add(gltf.scene);
+          //     }
+          // );
+
+
+          this.map = map;
+
+          this.renderer = new THREE.WebGLRenderer({
+              canvas: map.getCanvas(),
+              context: gl,
+              antialias: true
+          });
+
+          this.renderer.autoClear = false;
+      },
+      render: function (gl, matrix) {
+          const rotationX = new THREE.Matrix4().makeRotationAxis(
+              new THREE.Vector3(1, 0, 0),
+              modelTransform.rotateX
+          );
+          const rotationY = new THREE.Matrix4().makeRotationAxis(
+              new THREE.Vector3(0, 1, 0),
+              modelTransform.rotateY
+          );
+          const rotationZ = new THREE.Matrix4().makeRotationAxis(
+              new THREE.Vector3(0, 0, 1),
+              modelTransform.rotateZ
+          );
+
+          const m = new THREE.Matrix4().fromArray(matrix);
+          const l = new THREE.Matrix4()
+              .makeTranslation(
+                  modelTransform.translateX,
+                  modelTransform.translateY,
+                  modelTransform.translateZ
+              )
+              .scale(
+                  new THREE.Vector3(
+                      modelTransform.scale,
+                      -modelTransform.scale,
+                      modelTransform.scale
+                  )
+              )
+              .multiply(rotationX)
+              .multiply(rotationY)
+              .multiply(rotationZ);
+
+          this.camera.projectionMatrix = m.multiply(l);
+          this.renderer.resetState();
+          if (!map.interactive) this.renderer.render(this.scene, this.camera);
+          this.map.triggerRepaint();
+      }
+  };
+
+  models.push(customLayer);
+
+}
+
+addOBJModel('rosslyn', "avalon/model4.obj", "avalon/model4.mtl", [-118.2632, 33.9572], 65, [Math.PI / 2, -Math.PI / 2, 0]);
+
+addOBJModel('avalon', "rosslyn/model3.obj", "rosslyn/model3.mtl", [-118.2490, 34.0468], 140, [Math.PI / 2, Math.PI / 2 * 0.56, 0]);
+
+const setOpacity = (obj, value) => {
+  if (obj['material']) {
+    obj.material['transparent'] = true;
+    obj.material['opacity'] = value;
+  }
+  for (let child of obj.children) setOpacity(child, value);
+}
+
+
+
+</script>
+
+</body>
+</html>
